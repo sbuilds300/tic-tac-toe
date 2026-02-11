@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Tic Tac Toe Pro</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #e0f2fe, #f1f5f9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      text-align: center;
+      background: white;
+      padding: 20px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    h1 { margin-bottom: 10px; }
+
+    .scoreboard {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 15px;
+      font-weight: bold;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 80px);
+      grid-template-rows: repeat(3, 80px);
+      gap: 10px;
+      position: relative;
+    }
+
+    .cell {
+      background: #f8fafc;
+      border-radius: 15px;
+      font-size: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .cell:hover { background: #e2e8f0; }
+
+    .line {
+      position: absolute;
+      height: 5px;
+      background: red;
+      transform-origin: left center;
+      animation: grow 0.4s forwards;
+    }
+
+    @keyframes grow {
+      from { width: 0; }
+      to { width: 240px; }
+    }
+
+    button {
+      margin-top: 15px;
+      padding: 8px 15px;
+      border-radius: 10px;
+      border: none;
+      background: #3b82f6;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover { background: #2563eb; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Tic Tac Toe Pro</h1>
+
+    <div class="scoreboard">
+      <div>Player: <span id="playerScore">0</span></div>
+      <div>AI: <span id="aiScore">0</span></div>
+    </div>
+
+    <div class="board" id="board"></div>
+
+    <h3 id="status"></h3>
+    <button onclick="resetGame()">Restart Game</button>
+  </div>
+
+  <audio id="clickSound" src="https://www.soundjay.com/buttons/sounds/button-16.mp3"></audio>
+  <audio id="winSound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
+
+  <script>
+    const boardElement = document.getElementById("board");
+    const statusText = document.getElementById("status");
+    const clickSound = document.getElementById("clickSound");
+    const winSound = document.getElementById("winSound");
+
+    let board = Array(9).fill("");
+    let playerScore = 0;
+    let aiScore = 0;
+    let gameOver = false;
+
+    const winningCombos = [
+      [0,1,2],[3,4,5],[6,7,8],
+      [0,3,6],[1,4,7],[2,5,8],
+      [0,4,8],[2,4,6]
+    ];
+
+    function createBoard() {
+      boardElement.innerHTML = "";
+      board.forEach((_, index) => {
+        const cell = document.createElement("div");
+        cell.classList.add("cell");
+        cell.addEventListener("click", () => playerMove(index));
+        boardElement.appendChild(cell);
+      });
+      statusText.innerText = "Your Turn";
+    }
+
+    function playerMove(index) {
+      if (board[index] !== "" || gameOver) return;
+      board[index] = "X";
+      updateBoard();
+      clickSound.play();
+      if (checkWinner("X")) return;
+      if (board.includes("")) {
+        statusText.innerText = "AI Thinking...";
+        setTimeout(aiMove, 500);
+      }
+    }
+
+    function aiMove() {
+      let empty = board.map((val, idx) => val === "" ? idx : null).filter(v => v !== null);
+      let move = empty[Math.floor(Math.random() * empty.length)];
+      board[move] = "O";
+      updateBoard();
+      clickSound.play();
+      checkWinner("O");
+    }
+
+    function updateBoard() {
+      const cells = document.querySelectorAll(".cell");
+      cells.forEach((cell, i) => cell.innerText = board[i]);
+    }
+
+    function checkWinner(player) {
+      for (let combo of winningCombos) {
+        if (combo.every(i => board[i] === player)) {
+          gameOver = true;
+          drawLine(combo);
+          winSound.play();
+          if (player === "X") {
+            playerScore++;
+            document.getElementById("playerScore").innerText = playerScore;
+            statusText.innerText = "You Win!";
+          } else {
+            aiScore++;
+            document.getElementById("aiScore").innerText = aiScore;
+            statusText.innerText = "AI Wins!";
+          }
+          return true;
+        }
+      }
+      if (!board.includes("")) {
+        statusText.innerText = "It's a Draw!";
+        gameOver = true;
+      }
+      return false;
+    }
+
+    function drawLine(combo) {
+      const line = document.createElement("div");
+      line.classList.add("line");
+      const row = Math.floor(combo[0] / 3);
+      line.style.top = (row * 90 + 40) + "px";
+      boardElement.appendChild(line);
+    }
+
+    function resetGame() {
+      board = Array(9).fill("");
+      gameOver = false;
+      createBoard();
+    }
+
+    createBoard();
+  </script>
+</body>
+</html>
