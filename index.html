@@ -1,194 +1,235 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Tic Tac Toe Pro</title>
+  <title>Tic Tac Toe Ultra</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/566/566294.png">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <style>
+    :root {
+      --bg: linear-gradient(135deg, #e0f2fe, #f1f5f9);
+      --card: white;
+      --text: black;
+    }
+
+    body.dark {
+      --bg: linear-gradient(135deg, #0f172a, #1e293b);
+      --card: #1e293b;
+      --text: white;
+    }
+
     body {
       font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #e0f2fe, #f1f5f9);
+      background: var(--bg);
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
       margin: 0;
+      color: var(--text);
+      transition: 0.3s;
     }
 
     .container {
       text-align: center;
-      background: white;
+      background: var(--card);
       padding: 20px;
       border-radius: 20px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    }
-
-    h1 { margin-bottom: 10px; }
-
-    .scoreboard {
-      display: flex;
-      justify-content: space-around;
-      margin-bottom: 15px;
-      font-weight: bold;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      width: 95%;
+      max-width: 400px;
     }
 
     .board {
       display: grid;
-      grid-template-columns: repeat(3, 80px);
-      grid-template-rows: repeat(3, 80px);
+      grid-template-columns: repeat(3, 1fr);
       gap: 10px;
-      position: relative;
+      margin: 15px 0;
     }
 
     .cell {
-      background: #f8fafc;
+      aspect-ratio: 1;
+      font-size: 2rem;
+      background: #f1f5f9;
       border-radius: 15px;
-      font-size: 30px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
 
-    .cell:hover { background: #e2e8f0; }
-
-    .line {
-      position: absolute;
-      height: 5px;
-      background: red;
-      transform-origin: left center;
-      animation: grow 0.4s forwards;
-    }
-
-    @keyframes grow {
-      from { width: 0; }
-      to { width: 240px; }
-    }
-
-    button {
-      margin-top: 15px;
-      padding: 8px 15px;
+    button, select, input {
+      padding: 8px;
+      margin: 5px;
       border-radius: 10px;
       border: none;
-      background: #3b82f6;
-      color: white;
       cursor: pointer;
     }
 
-    button:hover { background: #2563eb; }
+    button {
+      background: #3b82f6;
+      color: white;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Tic Tac Toe Pro</h1>
+    <h2>Tic Tac Toe Ultra</h2>
 
-    <div class="scoreboard">
-      <div>Player: <span id="playerScore">0</span></div>
-      <div>AI: <span id="aiScore">0</span></div>
+    <input type="text" id="playerName" placeholder="Enter your name">
+    <br>
+
+    <select id="difficulty">
+      <option value="easy">Easy</option>
+      <option value="medium">Medium</option>
+      <option value="hard">Hard (Unbeatable)</option>
+    </select>
+
+    <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
+
+    <div>
+      <span id="scoreText">Score: 0 - 0</span>
     </div>
 
     <div class="board" id="board"></div>
 
     <h3 id="status"></h3>
-    <button onclick="resetGame()">Restart Game</button>
+    <button onclick="resetGame()">Restart</button>
   </div>
 
-  <audio id="clickSound" src="https://www.soundjay.com/buttons/sounds/button-16.mp3"></audio>
-  <audio id="winSound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
+  <audio id="bgMusic" loop>
+    <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_5a87a7e5c2.mp3?filename=arcade-music-loop-110624.mp3" type="audio/mpeg">
+  </audio>
 
-  <script>
-    const boardElement = document.getElementById("board");
-    const statusText = document.getElementById("status");
-    const clickSound = document.getElementById("clickSound");
-    const winSound = document.getElementById("winSound");
+<script>
+let board = Array(9).fill("");
+let player = "X";
+let ai = "O";
+let playerScore = 0;
+let aiScore = 0;
+let gameOver = false;
 
-    let board = Array(9).fill("");
-    let playerScore = 0;
-    let aiScore = 0;
-    let gameOver = false;
+const boardElement = document.getElementById("board");
+const statusText = document.getElementById("status");
+const scoreText = document.getElementById("scoreText");
 
-    const winningCombos = [
-      [0,1,2],[3,4,5],[6,7,8],
-      [0,3,6],[1,4,7],[2,5,8],
-      [0,4,8],[2,4,6]
-    ];
+const winCombos = [
+[0,1,2],[3,4,5],[6,7,8],
+[0,3,6],[1,4,7],[2,5,8],
+[0,4,8],[2,4,6]
+];
 
-    function createBoard() {
-      boardElement.innerHTML = "";
-      board.forEach((_, index) => {
-        const cell = document.createElement("div");
-        cell.classList.add("cell");
-        cell.addEventListener("click", () => playerMove(index));
-        boardElement.appendChild(cell);
-      });
-      statusText.innerText = "Your Turn";
+function createBoard() {
+  boardElement.innerHTML = "";
+  board.forEach((_, i) => {
+    const cell = document.createElement("div");
+    cell.classList.add("cell");
+    cell.innerText = board[i];
+    cell.onclick = () => playerMove(i);
+    boardElement.appendChild(cell);
+  });
+  statusText.innerText = "Your Turn";
+}
+
+function playerMove(i) {
+  if (board[i] !== "" || gameOver) return;
+  board[i] = player;
+  update();
+  if (!checkWinner(player)) setTimeout(aiMove, 400);
+}
+
+function aiMove() {
+  let difficulty = document.getElementById("difficulty").value;
+  let move;
+
+  if (difficulty === "easy") {
+    move = randomMove();
+  } else if (difficulty === "medium") {
+    move = Math.random() < 0.5 ? randomMove() : bestMove();
+  } else {
+    move = bestMove();
+  }
+
+  board[move] = ai;
+  update();
+  checkWinner(ai);
+}
+
+function randomMove() {
+  let empty = board.map((v,i)=>v===""?i:null).filter(v=>v!==null);
+  return empty[Math.floor(Math.random()*empty.length)];
+}
+
+function bestMove() {
+  let bestScore = -Infinity;
+  let move;
+  for (let i=0;i<9;i++){
+    if(board[i]===""){
+      board[i]=ai;
+      let score = minimax(board,0,false);
+      board[i]="";
+      if(score>bestScore){bestScore=score;move=i;}
     }
+  }
+  return move;
+}
 
-    function playerMove(index) {
-      if (board[index] !== "" || gameOver) return;
-      board[index] = "X";
-      updateBoard();
-      clickSound.play();
-      if (checkWinner("X")) return;
-      if (board.includes("")) {
-        statusText.innerText = "AI Thinking...";
-        setTimeout(aiMove, 500);
+function minimax(board, depth, isMax) {
+  if (checkStaticWinner(ai)) return 10-depth;
+  if (checkStaticWinner(player)) return depth-10;
+  if (!board.includes("")) return 0;
+
+  if (isMax) {
+    let best = -Infinity;
+    for (let i=0;i<9;i++){
+      if(board[i]===""){
+        board[i]=ai;
+        best=Math.max(best,minimax(board,depth+1,false));
+        board[i]="";
       }
     }
-
-    function aiMove() {
-      let empty = board.map((val, idx) => val === "" ? idx : null).filter(v => v !== null);
-      let move = empty[Math.floor(Math.random() * empty.length)];
-      board[move] = "O";
-      updateBoard();
-      clickSound.play();
-      checkWinner("O");
-    }
-
-    function updateBoard() {
-      const cells = document.querySelectorAll(".cell");
-      cells.forEach((cell, i) => cell.innerText = board[i]);
-    }
-
-    function checkWinner(player) {
-      for (let combo of winningCombos) {
-        if (combo.every(i => board[i] === player)) {
-          gameOver = true;
-          drawLine(combo);
-          winSound.play();
-          if (player === "X") {
-            playerScore++;
-            document.getElementById("playerScore").innerText = playerScore;
-            statusText.innerText = "You Win!";
-          } else {
-            aiScore++;
-            document.getElementById("aiScore").innerText = aiScore;
-            statusText.innerText = "AI Wins!";
-          }
-          return true;
-        }
+    return best;
+  } else {
+    let best = Infinity;
+    for (let i=0;i<9;i++){
+      if(board[i]===""){
+        board[i]=player;
+        best=Math.min(best,minimax(board,depth+1,true));
+        board[i]="";
       }
-      if (!board.includes("")) {
-        statusText.innerText = "It's a Draw!";
-        gameOver = true;
-      }
-      return false;
     }
+    return best;
+  }
+}
 
-    function drawLine(combo) {
-      const line = document.createElement("div");
-      line.classList.add("line");
-      const row = Math.floor(combo[0] / 3);
-      line.style.top = (row * 90 + 40) + "px";
-      boardElement.appendChild(line);
-    }
+function checkStaticWinner(p){
+  return winCombos.some(c=>c.every(i=>board[i]===p));
+}
 
-    function resetGame() {
-      board = Array(9).fill("");
-      gameOver = false;
-      createBoard();
-    }
+function checkWinner(p){
+  if(checkStaticWinner(p)){
+    gameOver=true;
+    if(p===player){playerScore++;confetti();}
+    else aiScore++;
+    scoreText.innerText=`Score: ${playerScore} - ${aiScore}`;
+    statusText.innerText=p+" Wins!";
+    return true;
+  }
+  if(!board.includes("")){
+    gameOver=true;
+    statusText.innerText="Draw!";
+  }
+  return false;
+}
 
-    createBoard();
-  </script>
+function update(){createBoard();}
+
+function resetGame(){board=Array(9).fill("");gameOver=false;createBoard();}
+
+function toggleDarkMode(){document.body.classList.toggle("dark");}
+
+createBoard();
+document.getElementById("bgMusic").play();
+</script>
 </body>
 </html>
